@@ -1,5 +1,5 @@
 {
-  "name": "stripe-express-connect",
+  "name": "@mdf/stripe-express-connect",
   "version": "0.1.0",
   "description": "Configurable React and Express building blocks for Stripe Connect Express onboarding and Checkout.",
   "license": "MIT",

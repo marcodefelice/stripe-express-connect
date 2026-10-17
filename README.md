@@ -1,4 +1,4 @@
-# stripe-express-connect
+# @mdf/stripe-express-connect
 
 Componenti React e API Express per collegare account **Stripe Connect Express** e incassare tramite **Stripe Checkout** direttamente sull'account della coppia.
 
@@ -8,7 +8,13 @@ Componenti React e API Express per collegare account **Stripe Connect Express** 
 
 ## Installazione
 
-Finché il package non è pubblicato su npm:
+Dopo la pubblicazione su npm:
+
+```bash
+npm install @mdf/stripe-express-connect
+```
+
+Per installarlo direttamente da GitHub prima della pubblicazione:
 
 ```bash
 npm install github:marcodefelice/stripe-express-connect
@@ -49,7 +55,7 @@ import express from 'express';
 import {
   createStripeExpressConnectRouter,
   createStripeWebhookHandler,
-} from 'stripe-express-connect/server';
+} from '@mdf/stripe-express-connect/server';
 
 const app = express();
 const baseUrl = process.env.PUBLIC_APP_URL!; // es. https://miosito.it
@@ -118,7 +124,7 @@ app.use('/api/stripe-connect', createStripeExpressConnectRouter({
 ### Collegare la coppia
 
 ```tsx
-import { ConnectExpressButton } from 'stripe-express-connect';
+import { ConnectExpressButton } from '@mdf/stripe-express-connect';
 
 <ConnectExpressButton
   email={currentCouple.email}
@@ -144,7 +150,7 @@ Per far riprendere un onboarding non terminato, passa l'`accountId` già salvato
 ### Inviare un invitato a Checkout
 
 ```tsx
-import { ExpressCheckoutButton } from 'stripe-express-connect';
+import { ExpressCheckoutButton } from '@mdf/stripe-express-connect';
 
 <ExpressCheckoutButton
   accountId={couple.stripeAccountId}
