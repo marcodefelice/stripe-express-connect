@@ -32,6 +32,10 @@ Stripe → webhook verificato → tua applicazione registra la donazione
 
 Questo package usa **direct charges**: il pagamento è creato sul Connected Account Express della coppia. Quindi la coppia è il merchant del pagamento e, nella configurazione standard Stripe, sostiene le commissioni di elaborazione. La piattaforma può impostare una sua commissione opzionale con `applicationFeeAmount`.
 
+### Accounts v2 e Managed Risk
+
+Gli account vengono creati con **Accounts v2**, Dashboard Express e `losses_collector: stripe`; non usare il legacy `type: 'express'`. Per questo flusso Stripe richiede la preview API `2026-09-30.preview`, già impostata dal package salvo override esplicito. Se usi una restricted key, abilita anche il permesso `v2_account_storer_write`.
+
 ## Configurazione Stripe
 
 1. Crea un account Stripe per la tua piattaforma e abilita Connect.

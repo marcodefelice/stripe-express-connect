@@ -27,7 +27,7 @@ export interface StripeExpressConnectOptions {
   /** Amount in cents that the platform keeps. Omit or return 0 when the platform takes no fee. */
   applicationFeeAmount?: (payload: CheckoutPayload, amountInCents: number) => number | Promise<number>;
   /** Persist the returned Express account ID against the signed-in application user. */
-  onAccountCreated?: (account: Stripe.Account, request: Request) => Promise<void> | void;
+  onAccountCreated?: (account: { id: string }, request: Request) => Promise<void> | void;
   /** Optional Stripe API version override. */
   apiVersion?: Stripe.LatestApiVersion;
 }
@@ -58,26 +58,30 @@ function metadata(input?: Record<string, string>): Record<string, string> | unde
  * Mount it after authentication middleware, but never put the platform secret in the client.
  */
 export function createStripeExpressConnectRouter(options: StripeExpressConnectOptions) {
-  const stripe = new Stripe(options.stripeSecretKey, options.apiVersion ? { apiVersion: options.apiVersion } : undefined);
+  // Express Dashboard with Accounts v2 is currently a Stripe preview API.
+  const stripe = new Stripe(options.stripeSecretKey, { apiVersion: options.apiVersion || '2026-09-30.preview' as Stripe.LatestApiVersion });
   const router = express.Router();
 
   router.post('/onboard', async (req: Request, res: Response) => {
     try {
       const suppliedAccountId = typeof req.body?.accountId === 'string' ? req.body.accountId : undefined;
-      let account: Stripe.Account;
+      let account: { id: string };
       if (suppliedAccountId) {
-        account = await stripe.accounts.retrieve(suppliedAccountId) as Stripe.Account;
+        account = await stripe.v2.core.accounts.retrieve(suppliedAccountId) as { id: string };
       } else {
         const email = typeof req.body?.email === 'string' ? req.body.email : undefined;
         const country = typeof req.body?.country === 'string' ? req.body.country.toUpperCase() : undefined;
-        account = await stripe.accounts.create({
-          type: 'express', email, country,
-          capabilities: { card_payments: { requested: true }, transfers: { requested: true } },
+        account = await stripe.v2.core.accounts.create({
+          contact_email: email,
+          dashboard: 'express',
+          identity: { country },
+          defaults: { responsibilities: { fees_collector: 'stripe', losses_collector: 'stripe' } },
+          configuration: { merchant: { capabilities: { card_payments: { requested: true } } } },
         });
         await options.onAccountCreated?.(account, req);
       }
-      const link = await stripe.accountLinks.create({ account: account.id, refresh_url: options.onboarding.refreshUrl, return_url: options.onboarding.returnUrl, type: 'account_onboarding' });
-      res.json({ accountId: account.id, onboardingUrl: link.url, onboardingComplete: Boolean(account.details_submitted && account.charges_enabled && account.payouts_enabled) });
+      const link = await stripe.v2.core.accountLinks.create({ account: account.id, use_case: { type: 'account_onboarding', account_onboarding: { refresh_url: options.onboarding.refreshUrl, return_url: options.onboarding.returnUrl } } });
+      res.json({ accountId: account.id, onboardingUrl: link.url, onboardingComplete: false });
     } catch (error) {
       res.status(400).json({ error: toErrorMessage(error) });
     }
@@ -87,8 +91,9 @@ export function createStripeExpressConnectRouter(options: StripeExpressConnectOp
     try {
       const accountId = Array.isArray(req.params.accountId) ? req.params.accountId[0] : req.params.accountId;
       if (!accountId) throw new Error('Account Stripe non valido.');
-      const account = await stripe.accounts.retrieve(accountId) as Stripe.Account;
-      res.json({ accountId: account.id, onboardingComplete: Boolean(account.details_submitted && account.charges_enabled && account.payouts_enabled), chargesEnabled: account.charges_enabled, payoutsEnabled: account.payouts_enabled, requirements: account.requirements?.currently_due ?? [] });
+      const account = await stripe.v2.core.accounts.retrieve(accountId) as any;
+      const requirements = account.requirements?.currently_due ?? [];
+      res.json({ accountId: account.id, onboardingComplete: requirements.length === 0, chargesEnabled: requirements.length === 0, payoutsEnabled: requirements.length === 0, requirements });
     } catch (error) {
       res.status(400).json({ error: toErrorMessage(error) });
     }
